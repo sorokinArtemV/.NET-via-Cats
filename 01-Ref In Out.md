@@ -19,9 +19,6 @@ void Mutate(Person p)   => p.Name = "Bob";    // видно caller'у — тот
 void Reassign(Person p) => p = new Person();  // НЕ видно — переназначилась копия ссылки
 ```
 
-> 🖼️ **SVG #1** — by-value vs by-ref (вставить рендер).
-> 🖼️ **SVG #1b** — reference type by-value (вставить рендер).
-
 Отсюда три вещи, которые by-value **не умеет**, и три модификатора как ответ на них:
 
 | Боль | Решение |
