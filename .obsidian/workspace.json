@@ -42,15 +42,29 @@
               "type": "markdown",
               "state": {
                 "file": "03-SOLID.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
               "title": "03-SOLID"
             }
+          },
+          {
+            "id": "f3eeb575c0d30dca",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "04-Const Readonly.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "04-Const Readonly"
+            }
           }
         ],
-        "currentTab": 2
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -212,14 +226,16 @@
       "bases:Create new base": false
     }
   },
-  "active": "111cc6183a8b9194",
+  "active": "f3eeb575c0d30dca",
   "lastOpenFiles": [
-    "Pasted image 20260618151233.png",
-    "02-Принципы ООП.md",
+    "Pasted image 20260619080911.png",
     "03-SOLID.md",
+    "04-Const Readonly.md",
+    "02-Принципы ООП.md",
+    "01-Ref In Out.md",
+    "Pasted image 20260618151233.png",
     "Pasted image 20260618150518.png",
     "Pasted image 20260618150442.png",
-    "01-Ref In Out.md",
     "Pasted image 20260618082710.png",
     "Pasted image 20260618082644.png"
   ]
