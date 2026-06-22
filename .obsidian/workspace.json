@@ -55,16 +55,30 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "04-Const Readonly.md",
+                "file": "02-Принципы ООП.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "04-Const Readonly"
+              "title": "02-Принципы ООП"
+            }
+          },
+          {
+            "id": "de2e5d364e1fcf05",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "05-Примитивы и decimal.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "05-Примитивы и decimal"
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 4
       }
     ],
     "direction": "vertical"
@@ -226,12 +240,14 @@
       "bases:Create new base": false
     }
   },
-  "active": "f3eeb575c0d30dca",
+  "active": "de2e5d364e1fcf05",
   "lastOpenFiles": [
+    "Pasted image 20260622113051.png",
+    "02-Принципы ООП.md",
+    "05-Примитивы и decimal.md",
+    "04-Const Readonly.md",
     "Pasted image 20260619080911.png",
     "03-SOLID.md",
-    "04-Const Readonly.md",
-    "02-Принципы ООП.md",
     "01-Ref In Out.md",
     "Pasted image 20260618151233.png",
     "Pasted image 20260618150518.png",
