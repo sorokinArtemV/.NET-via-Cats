@@ -23,8 +23,6 @@
 
 ### Четыре механизма по отдельности
 
-csharp
-
 ```csharp
 object.ReferenceEquals(a, b); // static, всегда идентичность ссылки, не переопределяется
 a == b;                       // static-оператор, выбор компилятором по статическому типу
@@ -66,8 +64,6 @@ object.Equals(a, b);          // static null-safe хелпер (семантик
 Кто его вызывает: `EqualityComparer<T>.Default` сначала проверяет, реализует ли `T` интерфейс `IEquatable<T>`, и если да — зовёт типизированный `Equals(T)`. А через `EqualityComparer<T>.Default` работают `Dictionary<TKey,_>`, `HashSet<T>`, `List<T>.Contains/IndexOf`, LINQ. Поэтому для типа, который пойдёт ключом или в `Contains`, реализация `IEquatable<T>` — это и корректность, и производительность.
 
 ### Чеклист корректной реализации (для класса)
-
-csharp
 
 ```csharp
 public sealed class Point : IEquatable<Point>   // sealed: см. примечание ниже

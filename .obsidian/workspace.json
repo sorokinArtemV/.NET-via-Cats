@@ -4,123 +4,20 @@
     "type": "split",
     "children": [
       {
-        "id": "0ae505d0a1691966",
+        "id": "d105b7c7cae42f19",
         "type": "tabs",
         "children": [
           {
-            "id": "307af09fa8355f82",
+            "id": "2ba5bbc9148500d5",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "07.5-20 практических заданий new  virtual  override.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "07.5-20 практических заданий new  virtual  override"
-            }
-          },
-          {
-            "id": "df123bfc03bf8c03",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "12-Exceptions.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "12-Exceptions"
-            }
-          },
-          {
-            "id": "2e5aebeb7b4f4e87",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "13-Generics.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "13-Generics"
-            }
-          },
-          {
-            "id": "f0d8c9c527ee5579",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "14-Equality.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "14-Equality"
-            }
-          },
-          {
-            "id": "e8183442e58e0e8c",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "15-IComparable.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "15-IComparable"
-            }
-          },
-          {
-            "id": "10c915dbd80e7f77",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "16-List<T> dynamic array.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "16-List<T> dynamic array"
-            }
-          },
-          {
-            "id": "c2f8aade40543700",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "17-Tuples.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "17-Tuples"
-            }
-          },
-          {
-            "id": "ea90ecc4b7603950",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "18-Delegates.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "18-Delegates"
+              "title": "New tab"
             }
           }
-        ],
-        "currentTab": 7
+        ]
       }
     ],
     "direction": "vertical"
@@ -282,27 +179,31 @@
       "bases:Create new base": false
     }
   },
-  "active": "ea90ecc4b7603950",
+  "active": "2ba5bbc9148500d5",
   "lastOpenFiles": [
-    "Pasted image 20260624173317.png",
-    "Pasted image 20260624173226.png",
+    "22-CLR — Common Language Runtime.md",
+    "Pasted image 20260625162349.png",
+    "20.1-Приложение. четыре LINQ-оператора, которые надо уметь объяснить.md",
+    "Pasted image 20260625160022.png",
+    "Pasted image 20260625160000.png",
+    "21-IQueryable<T> vs IEnumerable<T>.md",
+    "Pasted image 20260625155853.png",
+    "Pasted image 20260625155841.png",
+    "20-LINQ.md",
+    "Pasted image 20260625155719.png",
+    "19-Anonymous Types - new{...}.md",
     "17-Tuples.md",
     "18-Delegates.md",
-    "Pasted image 20260624164849.png",
+    "Pasted image 20260625152400.png",
+    "Pasted image 20260625152345.png",
     "16-List<T> dynamic array.md",
-    "Pasted image 20260624164538.png",
-    "Pasted image 20260624163938.png",
-    "07.1-20 практических заданий new  virtual  override.md",
-    "Pasted image 20260624163310.png",
     "15-IComparable.md",
     "14-Equality.md",
-    "Pasted image 20260624161018.png",
     "13-Generics.md",
-    "Pasted image 20260624160033.png",
-    "Pasted image 20260624155925.png",
+    "Pasted image 20260625112513.png",
+    "Pasted image 20260624173317.png",
+    "07.1-20 практических заданий new  virtual  override.md",
     "12-Exceptions.md",
-    "Pasted image 20260624112449.png",
-    "Pasted image 20260624112430.png",
     "06-Field, Property, Constructor.md",
     "07-Приведения и проверки типов.md",
     "11-Enums.md",
