@@ -11,13 +11,74 @@
             "id": "2ba5bbc9148500d5",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "22-CLR — Common Language Runtime.md",
+                "mode": "preview",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "22-CLR — Common Language Runtime"
+            }
+          },
+          {
+            "id": "13662973c338a159",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "23-Value types и Reference types — семантика.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "23-Value types и Reference types — семантика"
+            }
+          },
+          {
+            "id": "0f7e666939322545",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "24-Stack vs Heap — где живут данные.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "24-Stack vs Heap — где живут данные"
+            }
+          },
+          {
+            "id": "840cd64bb90946de",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "25-Boxing - Unboxing — мост между мирами и его цена.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "25-Boxing - Unboxing — мост между мирами и его цена"
+            }
+          },
+          {
+            "id": "22a15030b7b209fb",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "23-Value types и Reference types — семантика.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "23-Value types и Reference types — семантика"
             }
           }
-        ]
+        ],
+        "currentTab": 4
       }
     ],
     "direction": "vertical"
@@ -179,29 +240,33 @@
       "bases:Create new base": false
     }
   },
-  "active": "2ba5bbc9148500d5",
+  "active": "22a15030b7b209fb",
   "lastOpenFiles": [
+    "26-struct vs class.md",
+    "Pasted image 20260629115758.png",
+    "25-Boxing - Unboxing — мост между мирами и его цена.md",
+    "Pasted image 20260629115649.png",
+    "24-Stack vs Heap — где живут данные.md",
+    "Pasted image 20260629115604.png",
+    "23-Value types и Reference types — семантика.md",
+    "Pasted image 20260629115440.png",
+    "Pasted image 20260629115354.png",
     "22-CLR — Common Language Runtime.md",
-    "Pasted image 20260625162349.png",
-    "20.1-Приложение. четыре LINQ-оператора, которые надо уметь объяснить.md",
-    "Pasted image 20260625160022.png",
-    "Pasted image 20260625160000.png",
     "21-IQueryable<T> vs IEnumerable<T>.md",
-    "Pasted image 20260625155853.png",
-    "Pasted image 20260625155841.png",
+    "20.1-Приложение. четыре LINQ-оператора, которые надо уметь объяснить.md",
     "20-LINQ.md",
-    "Pasted image 20260625155719.png",
+    "Pasted image 20260629113629.png",
+    "Pasted image 20260629113621.png",
     "19-Anonymous Types - new{...}.md",
-    "17-Tuples.md",
     "18-Delegates.md",
-    "Pasted image 20260625152400.png",
-    "Pasted image 20260625152345.png",
-    "16-List<T> dynamic array.md",
     "15-IComparable.md",
+    "16-List<T> dynamic array.md",
+    "17-Tuples.md",
     "14-Equality.md",
     "13-Generics.md",
-    "Pasted image 20260625112513.png",
-    "Pasted image 20260624173317.png",
+    "Pasted image 20260625162349.png",
+    "Pasted image 20260625160022.png",
+    "Pasted image 20260625160000.png",
     "07.1-20 практических заданий new  virtual  override.md",
     "12-Exceptions.md",
     "06-Field, Property, Constructor.md",
@@ -211,9 +276,6 @@
     "09-Method binding.md",
     "08-Static.md",
     "05-Примитивы и decimal.md",
-    "02-Принципы ООП.md",
-    "04-Const Readonly.md",
-    "03-SOLID.md",
-    "01-Ref In Out.md"
+    "02-Принципы ООП.md"
   ]
 }
