@@ -1,158 +1,175 @@
-Из главы про GC ты уже знаешь: сборщик сам разбирается с managed-памятью и освобождать её вручную не нужно. Но есть ресурсы, до которых GC не дотягивается, — **unmanaged**: файловые и сетевые дескрипторы, сокеты, подключения к БД, нативные буферы, GDI-объекты. Это не «память в куче», а записи в таблицах ОС, и они **не бесконечны**: дескрипторы и соединения — scarce-ресурс, который легко исчерпать.
 
-Проблема в двух вещах. Во-первых, GC не знает, как закрыть файл или сокет, — он умеет только освобождать managed-память. Во-вторых, даже если бы знал, он делает это **недетерминированно**: сборка случится «когда-нибудь», а файл, который ты держишь открытым лишние полминуты, может заблокировать чужую запись или исчерпать пул соединений.
+Из главы про GC: сборщик сам разбирается с managed-памятью. Но есть ресурсы, до которых он не дотягивается, — **unmanaged**: файловые и сетевые дескрипторы, сокеты, подключения к БД, нативные буферы. Это записи в таблицах ОС, и они **не бесконечны** — scarce-ресурс, который легко исчерпать.
 
-`IDisposable` решает ровно это: даёт тебе **детерминированную точку освобождения** — ты сам говоришь «ресурс больше не нужен, закрой его сейчас», не дожидаясь GC. А финализатор — это страховочная сетка на случай, если вызвать `Dispose()` забыли. Эта глава — про оба механизма, про канонический Dispose pattern и про то, почему финализатор сегодня почти всегда пишут не руками, а через `SafeHandle`.
+Две проблемы. GC не умеет закрывать файл или сокет — только освобождать managed-память. И даже если бы умел, делал бы это **недетерминированно**: сборка случится «когда-нибудь», а файл, который ты держишь лишние полминуты, заблокирует чужую запись или исчерпает пул соединений.
 
-> Финализация тесно связана с GC: объект с финализатором проходит через очередь финализации и переживает лишнюю сборку (механику очередей мы заложили в главе «Garbage Collector»). Здесь разбираем это со стороны кода.
+`IDisposable` даёт **детерминированную точку освобождения**: ты сам говоришь «закрой ресурс сейчас». Финализатор — аварийная сетка рантайма на случай, если про `Dispose()` забыли. Забегая вперёд: **финализатор писать руками почти всегда не нужно и вредно** — и эта глава объясняет, по какому именно механизму он дорог и чем его заменяют (`SafeHandle`).
 
 ---
 
 ### 🧠 Mental model
 
-> `IDisposable.Dispose()` — это «освободи unmanaged/scarce-ресурсы **сейчас**», детерминированно, в точке выхода из `using`. Финализатор (`~T()`) — это «освободи их **когда-нибудь**, если про Dispose забыли»: недетерминированная страховка ценой лишнего цикла GC.
+> `Dispose()` — «освободи scarce-ресурсы **сейчас**», детерминированно, в точке выхода из `using`. Финализатор (`~T()`) — аварийный backstop рантайма, который ты **почти никогда не пишешь сам**: его реальная цена механическая — объект проходит через две очереди GC и переживает лишнюю сборку.
 
-Главное, что надо произнести: **Dispose — про детерминизм освобождения ресурсов, а не про память. Память — это GC.**
+Главное: **Dispose — про детерминированное освобождение ресурсов, а не про память. Память — это GC. Финализатор — крайнее средство, не штатный шаг.**
 
 ---
 
 ### Как это работает
 
-#### 1. Детерминированно vs недетерминированно
+#### 1. Детерминированное освобождение: IDisposable + `using`
 
-`using` — это синтаксический сахар над `try/finally`: `Dispose()` вызывается на выходе из блока **в любом случае**, в том числе при исключении.
+`using` — синтаксический сахар над `try/finally`: `Dispose()` вызывается на выходе из блока **в любом случае**, включая исключение.
 
 ```csharp
-// using-statement
-using (var file = new FileStream("data.txt", FileMode.Open))
-{
-    // работаем с file
-} // Dispose() вызван здесь, даже если внутри бросили исключение
+using (var file = new FileStream("data.txt", FileMode.Open)) { /* ... */ }
+// Dispose() здесь, даже при исключении внутри
 
-// using-declaration (C# 8): Dispose в конце текущего scope
-using var conn = new SqlConnection(cs);
+using var conn = new SqlConnection(cs);   // using-declaration (C# 8)
 conn.Open();
-// Dispose() вызовется в конце метода
+// Dispose() в конце текущего scope
 ```
 
-Если же `Dispose()` не вызвать, а у объекта есть финализатор, ресурс всё равно когда-нибудь освободится — но только когда до объекта дойдёт GC и отработает finalizer thread. Для редких ресурсов это «поздно».
+`Dispose()` обязан быть **идемпотентным** (повторный вызов безопасен) — этого требует контракт.
 
-![[Pasted image 20260630122620.png]]
+![[Pasted image 20260630132850.png]]
 
-#### 2. Финализатор и его цена
+#### 2. Финализация: две очереди и отдельный поток
 
-Финализатор в C# — это `~ClassName()`, который компилятор превращает в override `Object.Finalize()`. Он работает как страховка: если объект с финализатором стал недостижим, GC не собирает его сразу, а ставит в **очередь финализации**, отдаёт отдельному finalizer thread, тот выполняет `~T()`, и только следующая сборка освобождает память.
+Это та механика, которую на интервью спрашивают целенаправленно. Финализатор в C# — это `~ClassName()`, который компилятор превращает в override `Object.Finalize()`, обёрнутый в `try/finally` с вызовом `base.Finalize()`. Дальше работает связка из **двух очередей**:
 
-Отсюда — стоимость финализатора, и её надо уметь назвать:
+1. **При создании.** Как только ты аллоцируешь объект, у которого есть финализатор, рантайм кладёт указатель на него в **finalization queue** — внутреннюю структуру GC. Это происходит сразу, в момент `new`.
+2. **GC #1: объект стал недостижим.** Сборщик строит граф от корней. Обычный мусор он освобождает тут же. Но увидев, что недостижимый объект числится в finalization queue, он **не освобождает** его, а переносит указатель из finalization queue в **f-reachable queue** (finalizer-reachable).
+3. **f-reachable queue сама является корнем.** Пока указатель в ней, объект считается достижимым — то есть он временно «воскрешён» и **переживает эту сборку**, заодно продвигаясь в старшее поколение по обычным generational-правилам.
+4. **Finalizer-поток.** В каждом .NET-процессе есть один выделенный **finalizer thread**. Он спит, пока f-reachable queue пуста; когда GC добавляет туда записи — просыпается, по очереди вызывает `Finalize()` каждого объекта и убирает запись из очереди.
+5. **GC #2: настоящая уборка.** Теперь объект уже нигде не числится (ни корни, ни f-reachable на него не указывают) — следующая сборка освобождает память.
 
-- **Лишний цикл GC.** Объект не собирается в первую сборку, а доживает до второй → автоматически **продвигается в старшее поколение** (promotion), где сборки реже и дороже.
-- **Недетерминизм.** Момент запуска `~T()` не гарантирован; порядок финализации объектов не определён.
-- **Опасность в коде финализатора.** К моменту `~T()` другие managed-объекты, на которые ты ссылаешься, **могут быть уже финализированы** — трогать их нельзя.
+Отсюда железное правило: **объект с финализатором требует минимум двух сборок GC и одного промоушена**, чтобы освободиться. Обычный объект ушёл бы за одну.
 
-![[Pasted image 20260630122641.png]]
+![[Pasted image 20260630132905.png]]
 
-Поэтому в `Dispose()` после ручной очистки вызывают `GC.SuppressFinalize(this)` — он снимает объект с очереди финализации, и лишний цикл не происходит.
+Из этой механики вытекают неприятные свойства финализатора, которые надо знать:
 
-#### 3. Канонический Dispose pattern
+- **Недетерминизм.** Момент запуска `~T()` не гарантирован; порядок финализации разных объектов не определён.
+- **Чужой поток.** Финализатор исполняется на finalizer-потоке, а не на твоём — никакой thread affinity, никакого Thread Local Storage, осторожно с блокировками.
+- **Стоит даже пустой.** Пустой `~T()` всё равно регистрирует объект в очереди и продвигает его на поколение вверх — лишний расход на ровном месте.
+- **Опасный код внутри.** К моменту `~T()` другие managed-объекты, на которые ты ссылаешься, **могут быть уже финализированы** — трогать их нельзя. А необработанное исключение в финализаторе **завершает процесс**; зависший финализатор блокирует единственный finalizer-поток, и тогда не отработает ни один финализатор в приложении.
 
-Когда класс **сам напрямую владеет unmanaged-ресурсом** и хочет дать и детерминированную очистку, и страховку-финализатор, используют классический паттерн с `Dispose(bool disposing)`:
+#### 3. `GC.SuppressFinalize`
+
+Если ресурс уже освобождён вручную через `Dispose()`, гонять объект через две очереди незачем. `GC.SuppressFinalize(this)` это отменяет — причём дёшево: он лишь **ставит бит в заголовке объекта** (`BIT_SBLK_FINALIZER_RUN`), без манипуляций с очередями. Когда объект станет недостижим, GC увидит выставленный бит и **уберёт его из finalization queue вместо переноса в f-reachable** → финализатор не запустится, лишнего цикла не будет. Поэтому `SuppressFinalize(this)` вызывают в конце `Dispose()`.
+
+#### 4. Почему писать `~T()` руками — антипаттерн
+
+Помимо двойного цикла и недетерминизма есть ещё одна, тонкая и опасная проблема — **преждевременная (агрессивная) финализация**. GC может финализировать объект, **пока выполняется его же метод экземпляра**, если JIT видит, что `this` дальше в методе не используется. Сценарий-катастрофа:
 
 ```csharp
-public class NativeResource : IDisposable
+void Read()
 {
-    private IntPtr _handle;          // unmanaged
-    private Stream? _managed = new MemoryStream();  // managed, disposable
+    // _handle (IntPtr) уже не нужен компилятору как this после этой строки
+    var h = _handle;
+    // ⚠️ здесь GC может посчитать объект мусором и вызвать ~T(),
+    //    который закроет _handle, пока нативный вызов ниже ещё идёт
+    NativeRead(h);   // работает с уже закрытым/переиспользованным дескриптором
+}
+```
+
+Ручной фикс — `GC.KeepAlive(this)` в конце метода, но это легко забыть. Поэтому вывод однозначный: **финализатор руками не пишут.** Если класс владеет unmanaged-ресурсом — оборачивают его в `SafeHandle`, который решает и двойной цикл, и гонку recycling за тебя.
+
+#### 5. SafeHandle — правильный путь
+
+`SafeHandle` наследуется от `CriticalFinalizerObject`, поэтому его финализатор — **критический**: рантайм гарантирует его выполнение и запускает критические финализаторы **после** обычных (чтобы обычный финализатор успел доработать с ещё валидным хендлом). Внутри `SafeHandle` ведёт **счётчик ссылок**: на время маршалинга в нативный вызов хендл «удерживается», и финализатор не может закрыть его в середине P/Invoke — гонка recycling закрыта.
+
+На практике твоему классу финализатор **не нужен вообще** — он лишь хранит `SafeHandle` и диспозит его:
+
+```csharp
+public sealed class FileReader : IDisposable
+{
+    private readonly SafeFileHandle _handle;   // сам несёт критический финализатор
+
+    public FileReader(string path) =>
+        _handle = File.OpenHandle(path);
+
+    public void Dispose() => _handle.Dispose();   // ← никакого ~FileReader()
+}
+```
+
+Правило для интервью: **финализатор оправдан только при прямом владении голым `IntPtr`, и даже тогда сначала спрашивают, почему не `SafeHandle`.** Если ресурсы только managed (`Stream`, другой `IDisposable`) — финализатора нет, просто реализуешь `IDisposable` и диспозишь вложенное.
+
+#### 6. Legacy-паттерн `Dispose(bool)` — крайний случай
+
+Канонический паттерн с `Dispose(bool)` и финализатором нужен **только** тогда, когда класс действительно держит unmanaged напрямую и почему-то не может уйти на `SafeHandle`. Он существует, его спрашивают, но подавать его надо именно как редкий случай, а не как «как правильно делать Dispose»:
+
+```csharp
+public class NativeOwner : IDisposable
+{
+    private IntPtr _handle;          // прямое владение unmanaged
     private bool _disposed;
 
     public void Dispose()
     {
         Dispose(disposing: true);
-        GC.SuppressFinalize(this);   // финализатор больше не нужен
+        GC.SuppressFinalize(this);
     }
 
     protected virtual void Dispose(bool disposing)
     {
-        if (_disposed) return;       // идемпотентность
+        if (_disposed) return;
         if (disposing)
         {
-            // вызвано из Dispose(): managed-объекты ещё живы — можно трогать
-            _managed?.Dispose();
-            _managed = null;
+            // из Dispose(): managed-объекты ещё живы — их можно диспозить
         }
-        // unmanaged освобождаем всегда (и из Dispose, и из финализатора)
-        Free(_handle);
+        Free(_handle);               // unmanaged освобождаем всегда
         _handle = IntPtr.Zero;
         _disposed = true;
     }
 
-    ~NativeResource() => Dispose(disposing: false);  // страховка
+    ~NativeOwner() => Dispose(disposing: false);   // backstop; в реальном коде — SafeHandle
 }
 ```
 
-Что здесь важно объяснить на собеседовании:
+Что объяснить про этот паттерн:
 
-- **Параметр `disposing`** разделяет два пути входа. `true` — пришли из `Dispose()`, managed-объекты ещё живы, их можно безопасно диспозить. `false` — пришли из финализатора, **managed-объекты трогать нельзя** (могли быть уже финализированы), освобождаем только unmanaged.
-- **`_disposed`-флаг** делает `Dispose()` идемпотентным — повторный вызов безопасен (этого требует контракт `IDisposable`).
-- **`virtual Dispose(bool)`** — чтобы наследник мог дочистить своё, переопределив один метод. Сам `Dispose()` и финализатор наследник не переопределяет.
+- **`disposing`** разделяет пути входа. `true` (из `Dispose()`) — managed-объекты живы, их можно диспозить. `false` (из финализатора) — **трогаем только unmanaged**, потому что порядок финализации не определён и managed-поля могли быть уже финализированы.
+- **`_disposed`** даёт идемпотентность.
+- **`virtual Dispose(bool)`** — точка расширения для наследника; сам `Dispose()` и финализатор он не трогает.
 
-#### 4. SafeHandle — почему финализатор почти не пишут руками
+#### 7. IAsyncDisposable — асинхронное освобождение
 
-Ключевая рекомендация Microsoft: **не реализуй финализатор сам — заверни unmanaged-хендл в `SafeHandle`.** `SafeHandle` уже несёт корректный critical finalizer, защиту от handle-recycling атак и потокобезопасное освобождение. Тогда твоему классу финализатор не нужен вообще — достаточно продиспозить хендл:
-
-```csharp
-public class SafeResource : IDisposable
-{
-    private readonly SafeHandle _handle = new SafeFileHandle(/* ... */);
-
-    public void Dispose() => _handle.Dispose();   // финализатор не нужен
-}
-```
-
-Правило для интервью: финализатор оправдан, **только если класс держит unmanaged-ресурс напрямую** (голый `IntPtr`). Если ресурсы только managed (`Stream`, `HttpClient`, другой `IDisposable`) — финализатор не пишут вообще, лишь реализуют `IDisposable` и диспозят вложенные объекты.
-
-#### 5. IAsyncDisposable — асинхронное освобождение
-
-Иногда корректная очистка требует I/O: дослать буфер в сеть, мягко закрыть соединение. Блокировать на этом поток в синхронном `Dispose()` плохо. Для этого есть `IAsyncDisposable` (C# 8 / .NET Core 3.0) с методом `DisposeAsync()`, возвращающим `ValueTask`, и `await using`:
+Когда корректная очистка требует I/O (дослать буфер, мягко закрыть соединение), блокировать поток в синхронном `Dispose()` плохо. Для этого есть `IAsyncDisposable` (C# 8 / .NET Core 3.0) с `DisposeAsync()` → `ValueTask`, потребляемый через `await using`:
 
 ```csharp
 await using var conn = new AsyncDbConnection(cs);
 await conn.QueryAsync(...);
 // DisposeAsync() будет awaited на выходе из scope
-```
 
-Канонический async-паттерн выносит асинхронную часть в `DisposeAsyncCore()`:
-
-```csharp
 public async ValueTask DisposeAsync()
 {
-    await DisposeAsyncCore().ConfigureAwait(false);
-    Dispose(disposing: false);   // синхронная часть для unmanaged
+    await DisposeAsyncCore().ConfigureAwait(false);   // асинхронная часть
+    Dispose(disposing: false);                        // синхронная (если есть unmanaged)
     GC.SuppressFinalize(this);
-}
-protected virtual async ValueTask DisposeAsyncCore()
-{
-    if (_asyncResource is not null)
-        await _asyncResource.DisposeAsync().ConfigureAwait(false);
 }
 ```
 
-Если тип владеет async-ресурсами — реализуют `IAsyncDisposable`; часто реализуют **оба** интерфейса, чтобы тип работал и в `using`, и в `await using`.
+Если тип владеет и sync-, и async-ресурсами — реализуют **оба** интерфейса, чтобы он работал и в `using`, и в `await using`.
 
 ---
 
 ### 🔬 Глубже / на синьора
 
-**`using` — это pattern-based, а не только интерфейс.** Компилятор разворачивает `using` в `try/finally` по _наличию_ подходящего метода `Dispose()`, а не строго по `IDisposable`. Благодаря этому `using` работает с `ref struct` (которые не могли реализовать интерфейсы), если у них есть публичный `Dispose()`. Аналогично `await using` работает по наличию `DisposeAsync()`.
+**Critical finalizers и порядок.** `CriticalFinalizerObject` (предок `SafeHandle`) гарантирует выполнение финализатора и запускается **после** обычных финализаторов в рамках одной уборки — чтобы обычный `~T()`, который ещё может обратиться к хендлу, успел доработать до того, как критический финализатор хендл закроет.
 
-**`Dispose()` не должен бросать.** Исключение из `Dispose()` (особенно из finally при уже летящем исключении) маскирует исходную ошибку и роняет очистку. Гайдлайн: `Dispose()` должен быть безопасным и идемпотентным.
+**Resurrection и `ReRegisterForFinalize`.** Из финализатора объект можно «воскресить», вернув ссылку на него в корень. `GC.ReRegisterForFinalize` снова поставит его в finalization queue. Приём редкий и опасный (легко получить бесконечно живущий объект) — знать как факт, в проде избегать.
 
-**Диспозить только то, чем владеешь.** Частый баг — продиспозить инъектированную зависимость или общий `HttpClient`, которым владеет кто-то другой → ты ломаешь его остальным потребителям. С `HttpClient` обратная классика: его, наоборот, **нельзя** создавать-и-диспозить на каждый запрос (исчерпание сокетов из-за `TIME_WAIT`) — используют `IHttpClientFactory`/долгоживущий клиент.
+**Финализация не гарантирована вовсе.** При жёстком завершении (`Environment.FailFast`, аварийный обрыв процесса) финализаторы могут не выполниться. Опираться на `~T()` как на гарантию нельзя — это только страховка от забытого `Dispose()`.
 
-**`ConfigureAwait(false)` и стек `await using`.** Внутри `DisposeAsync()` используют `ConfigureAwait(false)`. Но «складывать» несколько `await using` с `.ConfigureAwait(false)` в одну строку рискованно — в редких ошибочных ветках `DisposeAsync` может не вызваться; MS рекомендует не стекать их, а оформлять вложенными блоками. (Async/await-механику закрываем в отдельной главе — кросс-реф.)
+**`using` — pattern-based.** Компилятор разворачивает `using`/`await using` по _наличию_ подходящего `Dispose()`/`DisposeAsync()`, а не строго по интерфейсу. Поэтому `using` работает с `ref struct` (которые исторически не реализовывали интерфейсы), если у них есть публичный `Dispose()`. C# 13 (.NET 9) дополнительно разрешил `ref struct` реализовывать интерфейсы, включая `IDisposable`.
 
-**`GC.ReRegisterForFinalize` / воскрешение.** Из финализатора объект можно «воскресить», вернув на него ссылку из корня (object resurrection). Это редкий и опасный приём — на интервью достаточно знать, что он существует и почему его избегают.
+**Диспозить только то, чем владеешь.** Частый баг — продиспозить инъектированную зависимость или общий `HttpClient`, которым владеет кто-то другой. С `HttpClient` обратная классика: его **нельзя** создавать-и-диспозить на каждый запрос (исчерпание сокетов из-за `TIME_WAIT`) — используют `IHttpClientFactory`/долгоживущий клиент.
 
-**Финализатор не гарантирован вовсе.** При жёстком завершении процесса финализаторы могут не успеть отработать. Опираться на `~T()` как на гарантию освобождения нельзя — это только страховка от забытого `Dispose()`.
+**`Dispose()` не должен бросать.** Исключение из `Dispose()` (особенно в `finally` поверх уже летящего исключения) маскирует исходную ошибку.
+
+**Диагностика.** Раздутая f-reachable queue видна в дампе через SOS-команду `!finalizequeue`; счётчики финализации — в `dotnet-counters`. В тестах детерминированно прогнать финализаторы можно связкой `GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();` (в проде так не делают).
 
 ---
 
@@ -160,42 +177,45 @@ protected virtual async ValueTask DisposeAsyncCore()
 
 #### Вопросы по частоте
 
-**Q1 (очень часто). Что такое `IDisposable` и зачем он нужен?**  
-Follow-up: _Что делает `using`?_ → Трап: _Освобождает ли `Dispose()` память самого объекта?_ (нет — память это GC; `Dispose` про unmanaged/scarce-ресурсы).
+**Q1 (очень часто). Что такое `IDisposable` и зачем он нужен?** → follow-up: _Что делает `using`?_ → трап: _Освобождает ли `Dispose()` память объекта?_ (нет — память это GC; `Dispose` про unmanaged/scarce).
 
-**Q2 (часто). Чем `Dispose` отличается от финализатора? Кто кого вызывает?**  
-Follow-up: _Вызовет ли GC `Dispose()`?_ (нет — GC вызывает финализатор, не `Dispose`) → Трап: _Финализатор — это деструктор как в C++?_ (нет: недетерминирован, без гарантии момента, со стоимостью).
+**Q2 (часто). Чем `Dispose` отличается от финализатора, кто кого вызывает?** → follow-up: _Вызовет ли GC `Dispose()`?_ (нет — GC вызывает финализатор) → трап: _Финализатор — деструктор как в C++?_ (нет: недетерминирован, без гарантии момента, со стоимостью).
 
-**Q3 (часто). Объясни/напиши Dispose pattern.** `Dispose(bool)`, финализатор, `SuppressFinalize`.  
-Follow-up: _Зачем параметр `disposing`?_ → Трап: _Почему в финализаторе нельзя трогать managed-объекты?_ (порядок финализации не определён — они могут быть уже финализированы).
+**Q3 (часто, любят копать). Что происходит с объектом, у которого есть финализатор, при сборке? Зачем две очереди?** → finalization queue → f-reachable queue (root → выжил + promoted) → finalizer thread → GC #2. → трап: _Зачем вообще f-reachable, почему не вызвать `Finalize` сразу?_ (финализатор — недоверенный пользовательский код: может бросить/зависнуть, поэтому его вынесли на отдельный поток вне процесса сборки).
 
-**Q4 (часто). Почему финализатор дорог?** Лишний цикл GC, promotion в старшее поколение, недетерминизм.  
-Трап: _Как избежать этой цены, если Dispose всё-таки вызвали?_ (`GC.SuppressFinalize`).
+**Q4 (часто/senior). Почему не стоит писать финализатор руками и что вместо него?** Двойной цикл + промоушен, недетерминизм, чужой поток, гонка recycling (преждевременная финализация); вместо — `SafeHandle`. → трап: _Как `SafeHandle` спасает от гонки recycling?_ (ref-counting удерживает хендл на время P/Invoke).
 
-**Q5 (средне). Когда нужен `SafeHandle`?** Когда класс владеет unmanaged-хендлом напрямую — `SafeHandle` заменяет ручной финализатор.
+**Q5 (часто). Что делает `GC.SuppressFinalize` и когда его звать?** Ставит бит в header → объект убирается из finalization queue, финализатор не запускается; зовут в конце `Dispose()`.
 
 **Q6 (средне). `IDisposable` vs `IAsyncDisposable`, когда `await using`?** Когда очистка требует I/O и нельзя блокировать поток.
 
+**Q7 (средне). В паттерне `Dispose(bool disposing)` — зачем флаг?** Разделяет вызов из `Dispose()` (managed живы) и из финализатора (только unmanaged, managed трогать нельзя).
+
 #### Типичные неглубокие ответы и почему проваливаются
 
-- **«`Dispose()` освобождает память объекта».** Нет. Память освобождает GC. `Dispose` — про unmanaged/scarce-ресурсы (handles, соединения, сокеты). На follow-up про память кандидат поплывёт.
-- **«GC вызовет `Dispose()` автоматически».** Нет: GC вызывает **финализатор**, а не `Dispose`. `Dispose` — твоя ответственность (через `using` или вручную).
-- **«Финализатор = деструктор C++».** Синтаксис похож (`~T()`), семантика — нет: не детерминирован, момент не гарантирован, стоит лишнего цикла GC.
-- **«В Dispose pattern всегда нужен финализатор».** Нет: только при прямом владении unmanaged. Для managed-ресурсов финализатор не пишут; для unmanaged предпочитают `SafeHandle`.
-- **«`using` не сработает при исключении».** Сработает: это `try/finally`, `Dispose` вызовется и при исключении.
+- **«`Dispose()` освобождает память объекта».** Нет: память — GC; `Dispose` про unmanaged/scarce-ресурсы.
+- **«GC вызовет `Dispose()` автоматически».** Нет: GC вызывает **финализатор**, не `Dispose`.
+- **«Финализатор срабатывает сразу, как объект стал не нужен».** Нет: минимум две сборки и проход через f-reachable queue; момент недетерминирован.
+- **«В Dispose pattern всегда нужен финализатор».** Нет — это редкий случай прямого владения unmanaged; по умолчанию финализатора нет, для unmanaged берут `SafeHandle`.
+- **«Финализатор = деструктор C++».** Синтаксис похож, семантика нет: недетерминизм, чужой поток, двойной цикл.
+- **«`using` не сработает при исключении».** Сработает: это `try/finally`.
 
 #### Модельные ответы
 
 **Q1 — «Что такое IDisposable и зачем он нужен?»**
 
-🇷🇺 «`IDisposable` — это контракт с методом `Dispose()` для **детерминированного** освобождения ресурсов, до которых GC не дотягивается: unmanaged-хендлов, файлов, сокетов, соединений с БД. GC управляет только managed-памятью и делает это недетерминированно, поэтому scarce-ресурсы нельзя оставлять на него. Обычно `Dispose()` вызывают через `using`, который разворачивается в `try/finally` и гарантирует вызов даже при исключении. Ключевое: `Dispose` — про ресурсы и про _когда_ их отпустить, а не про память объекта.»
+🇷🇺 «`IDisposable` — контракт с `Dispose()` для **детерминированного** освобождения ресурсов, до которых GC не дотягивается: unmanaged-хендлов, файлов, сокетов, соединений. GC управляет только managed-памятью и недетерминированно, поэтому scarce-ресурсы нельзя оставлять на него. Обычно `Dispose()` вызывают через `using` → `try/finally`, что гарантирует вызов даже при исключении. Ключевое: `Dispose` про ресурсы и _когда_ их отпустить, а не про память объекта.»
 
-🇬🇧 “`IDisposable` is a contract with a `Dispose()` method for **deterministic** release of resources the GC can’t handle — unmanaged handles, files, sockets, database connections. The GC only manages managed memory and does so non-deterministically, so scarce resources shouldn’t be left to it. You normally call `Dispose()` via `using`, which compiles to `try/finally` and guarantees the call even on exception. The key point: `Dispose` is about _resources_ and _when_ to release them, not about the object’s memory.”
+🇬🇧 “`IDisposable` is a contract with a `Dispose()` method for **deterministic** release of resources the GC can’t handle — unmanaged handles, files, sockets, connections. The GC manages only managed memory and does so non-deterministically, so scarce resources shouldn’t be left to it. You normally call `Dispose()` via `using`, which compiles to `try/finally` and guarantees the call even on exception. The key point: `Dispose` is about resources and _when_ to release them, not the object’s memory.”
 
-**Q3/Q4 — Dispose pattern и цена финализатора**
+**Q3 — «Финализация и две очереди»**
 
-🇷🇺 «Канонический паттерн — публичный `Dispose()`, защищённый `virtual Dispose(bool disposing)` и, если есть прямое владение unmanaged, финализатор `~T()`. `Dispose()` зовёт `Dispose(true)` и `GC.SuppressFinalize(this)`; финализатор зовёт `Dispose(false)`. Параметр `disposing` разделяет пути: при `true` (из Dispose) managed-объекты живы и их можно диспозить, при `false` (из финализатора) трогаем только unmanaged, потому что порядок финализации не определён. Финализатор дорог: объект переживает лишнюю сборку и продвигается в старшее поколение — поэтому `SuppressFinalize` после ручного `Dispose` убирает его из очереди. На практике финализатор руками почти не пишут — unmanaged заворачивают в `SafeHandle`.»
+🇷🇺 «Когда объект с финализатором создаётся, рантайм кладёт указатель на него в finalization queue. При сборке, если такой объект стал недостижим, GC не освобождает его сразу, а переносит указатель в f-reachable queue — а она сама является корнем, поэтому объект переживает эту сборку и продвигается на поколение вверх. Отдельный finalizer-поток вычитывает f-reachable, выполняет `Finalize()` и убирает запись; только следующая сборка освобождает память. Поэтому финализируемый объект требует двух сборок. Вторая очередь нужна, потому что `Finalize` — недоверенный пользовательский код: его выносят на отдельный поток, чтобы исключение или зависание не сломали саму сборку.»
 
-🇬🇧 “The canonical pattern is a public `Dispose()`, a protected `virtual Dispose(bool disposing)`, and — only if the class directly owns unmanaged resources — a `~T()` finalizer. `Dispose()` calls `Dispose(true)` and `GC.SuppressFinalize(this)`; the finalizer calls `Dispose(false)`. The `disposing` flag splits the paths: when `true` (from Dispose) managed objects are alive and can be disposed; when `false` (from the finalizer) you touch only unmanaged state, because finalization order is undefined. Finalizers are costly — the object survives an extra GC and gets promoted — so `SuppressFinalize` after a manual `Dispose` removes it from the queue. In practice you rarely hand-write a finalizer; you wrap unmanaged handles in a `SafeHandle` instead.”
+🇬🇧 “When an object with a finalizer is created, the runtime adds a pointer to it to the finalization queue. During a collection, if such an object becomes unreachable, the GC doesn’t reclaim it immediately — it moves the pointer to the f-reachable queue, which itself acts as a root, so the object survives that collection and gets promoted. A dedicated finalizer thread drains the f-reachable queue, runs `Finalize()`, and removes the entry; only the next collection reclaims the memory. That’s why a finalizable object needs two collections. The second queue exists because `Finalize` is untrusted user code — it’s run on a separate thread so an exception or hang can’t break the collection itself.”
 
-_(senior add-on)_ «Если очистка асинхронная — реализуют `IAsyncDisposable.DisposeAsync()` и потребляют через `await using`; часто реализуют оба интерфейса.»
+**Q4 — «Почему не писать финализатор руками»**
+
+🇷🇺 «Финализатор дорог и опасен: объект переживает лишнюю сборку и продвигается в старшее поколение, момент вызова недетерминирован, исполняется на чужом потоке, а необработанное исключение в нём валит процесс. Хуже того, возможна преждевременная финализация — GC может вызвать `~T()`, пока метод объекта ещё выполняется, если `this` дальше не используется, и закрыть хендл в середине нативного вызова. Поэтому unmanaged заворачивают в `SafeHandle`: он наследник `CriticalFinalizerObject`, несёт корректный критический финализатор и через ref-counting удерживает хендл на время P/Invoke, закрывая гонку recycling. Тогда своему классу финализатор не нужен — он просто диспозит `SafeHandle`.»
+
+🇬🇧 “A finalizer is costly and dangerous: the object survives an extra collection and gets promoted, its timing is non-deterministic, it runs on a separate thread, and an unhandled exception in it terminates the process. Worse, premature finalization is possible — the GC may run `~T()` while the object’s own method is still executing, if `this` isn’t used afterwards, closing the handle mid native call. So you wrap unmanaged resources in a `SafeHandle`: it derives from `CriticalFinalizerObject`, carries a correct critical finalizer, and ref-counts the handle to keep it alive across the P/Invoke, closing the recycling race. Then your own class needs no finalizer — it just disposes the `SafeHandle`.”
