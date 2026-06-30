@@ -97,16 +97,58 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "28-IDisposable и финализация.md",
+                "file": "27-Garbage Collector (GC).md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "28-IDisposable и финализация"
+              "title": "27-Garbage Collector (GC)"
+            }
+          },
+          {
+            "id": "086f7e13ac4776e8",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "29-Reflection.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "29-Reflection"
+            }
+          },
+          {
+            "id": "bc6d470d4a922579",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "30-Attributes.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "30-Attributes"
+            }
+          },
+          {
+            "id": "caba6ba41009d00c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "31-Expression Trees.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "31-Expression Trees"
             }
           }
         ],
-        "currentTab": 6
+        "currentTab": 9
       }
     ],
     "direction": "vertical"
@@ -268,25 +310,28 @@
       "bases:Create new base": false
     }
   },
-  "active": "da88e76ba3b6eb2a",
+  "active": "caba6ba41009d00c",
   "lastOpenFiles": [
-    "Pasted image 20260630132905.png",
-    "Pasted image 20260630132850.png",
+    "Pasted image 20260630175529.png",
+    "Pasted image 20260630175516.png",
+    "30-Attributes.md",
+    "31-Expression Trees.md",
+    "Pasted image 20260630175409.png",
+    "29-Reflection.md",
+    "Pasted image 20260630175318.png",
+    "Pasted image 20260630175240.png",
     "27-Garbage Collector (GC).md",
     "28-IDisposable и финализация.md",
+    "Pasted image 20260630132905.png",
+    "Pasted image 20260630132850.png",
     "Pasted image 20260630122641.png",
     "Pasted image 20260630122620.png",
     "Pasted image 20260630122459.png",
     "Pasted image 20260630122355.png",
-    "Pasted image 20260630122347.png",
-    "Pasted image 20260630122337.png",
-    "Pasted image 20260630122327.png",
     "26-Struct vs Class.md",
     "25-Boxing - Unboxing — мост между мирами и его цена.md",
     "24-Stack vs Heap — где живут данные.md",
     "23-Value types и Reference types — семантика.md",
-    "Pasted image 20260629115758.png",
-    "Pasted image 20260629115649.png",
     "22-CLR — Common Language Runtime.md",
     "21-IQueryable<T> vs IEnumerable<T>.md",
     "20.1-Приложение. четыре LINQ-оператора, которые надо уметь объяснить.md",
@@ -302,9 +347,6 @@
     "12-Exceptions.md",
     "06-Field, Property, Constructor.md",
     "07-Приведения и проверки типов.md",
-    "11-Enums.md",
-    "10-Pattern matching.md",
-    "09-Method binding.md",
-    "08-Static.md"
+    "11-Enums.md"
   ]
 }
