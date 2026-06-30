@@ -69,16 +69,44 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "23-Value types и Reference types — семантика.md",
+                "file": "26-Struct vs Class.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "23-Value types и Reference types — семантика"
+              "title": "26-Struct vs Class"
+            }
+          },
+          {
+            "id": "ae5831e841c6b45c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "27-Garbage Collector (GC).md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "27-Garbage Collector (GC)"
+            }
+          },
+          {
+            "id": "da88e76ba3b6eb2a",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "28-IDisposable и финализация.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "28-IDisposable и финализация"
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 6
       }
     ],
     "direction": "vertical"
@@ -240,23 +268,29 @@
       "bases:Create new base": false
     }
   },
-  "active": "22a15030b7b209fb",
+  "active": "da88e76ba3b6eb2a",
   "lastOpenFiles": [
-    "26-struct vs class.md",
-    "Pasted image 20260629115758.png",
+    "Pasted image 20260630122641.png",
+    "Pasted image 20260630122620.png",
+    "27-Garbage Collector (GC).md",
+    "28-IDisposable и финализация.md",
+    "Pasted image 20260630122459.png",
+    "Pasted image 20260630122355.png",
+    "Pasted image 20260630122347.png",
+    "Pasted image 20260630122337.png",
+    "Pasted image 20260630122327.png",
+    "26-Struct vs Class.md",
     "25-Boxing - Unboxing — мост между мирами и его цена.md",
-    "Pasted image 20260629115649.png",
     "24-Stack vs Heap — где живут данные.md",
-    "Pasted image 20260629115604.png",
     "23-Value types и Reference types — семантика.md",
+    "Pasted image 20260629115758.png",
+    "Pasted image 20260629115649.png",
+    "Pasted image 20260629115604.png",
     "Pasted image 20260629115440.png",
-    "Pasted image 20260629115354.png",
     "22-CLR — Common Language Runtime.md",
     "21-IQueryable<T> vs IEnumerable<T>.md",
     "20.1-Приложение. четыре LINQ-оператора, которые надо уметь объяснить.md",
     "20-LINQ.md",
-    "Pasted image 20260629113629.png",
-    "Pasted image 20260629113621.png",
     "19-Anonymous Types - new{...}.md",
     "18-Delegates.md",
     "15-IComparable.md",
@@ -264,9 +298,6 @@
     "17-Tuples.md",
     "14-Equality.md",
     "13-Generics.md",
-    "Pasted image 20260625162349.png",
-    "Pasted image 20260625160022.png",
-    "Pasted image 20260625160000.png",
     "07.1-20 практических заданий new  virtual  override.md",
     "12-Exceptions.md",
     "06-Field, Property, Constructor.md",
@@ -274,8 +305,6 @@
     "11-Enums.md",
     "10-Pattern matching.md",
     "09-Method binding.md",
-    "08-Static.md",
-    "05-Примитивы и decimal.md",
-    "02-Принципы ООП.md"
+    "08-Static.md"
   ]
 }

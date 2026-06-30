@@ -128,8 +128,3 @@ _Senior add-on._ Под капотом все value types наследуют `Sy
 _Senior add-on._ Under the hood all value types derive from `System.ValueType : object`, so converting a value type to `object`/an interface is possible but is boxing with a heap allocation. Also, `default(T)` for a struct zeroes memory bypassing any parameterless constructor (C# 10) — you can't guarantee a valid struct default.
 
 ---
-
-#### Что я проверил и осталось под `VERIFY:`
-
-- **Проверено (web):** C# 10 — `default(T)` и `new T[n]` игнорируют явный parameterless-конструктор struct и обнуляют поля. Источники подтверждают.
-- **VERIFY (на синьора, не в core):** точное поведение `new T()` в generic-контексте под `where T : new()` / `Activator.CreateInstance<T>()` менялось между рантаймами и спорно в источниках — поэтому сознательно не включал в главу. Если захочешь добавить как 🔬-edge — отдельно перепроверю на конкретной версии .NET перед тем, как писать.
